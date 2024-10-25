@@ -533,8 +533,6 @@ do
 		elseif nameHandlers[entity.name] then
 			nameHandlers[entity.name](entity, game.players[e.player_index])
 		end
-
-		print(entity.type)
 	end
 
 	script.on_event(defines.events.on_built_entity, onBuildEntity)
