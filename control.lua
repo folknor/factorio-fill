@@ -99,6 +99,7 @@ local slotCategories = {}
 -- Sorted array of fuel item names by real fuel value (fuel_value * stack_size)
 local sortedFuels = nil
 -- key: ammo_category, value: sorted list of ammunition for that category
+---@type table
 local ammoCategories = nil
 
 local itemStackCache
@@ -134,6 +135,7 @@ do
 			if type(item) ~= "string" then return 20 end
 			local p = prototypes.item[item]
 			if type(p) == "userdata" then
+				---@cast p itemPrototype
 				local max = type(p.stack_size) ~= "nil" and tonumber(p.stack_size) or 50
 				if max > 1 then
 					local percent
@@ -189,6 +191,8 @@ local buildFuelTable
 do
 	-- Map of fuel names to real fuel values, multiplied by stack size
 	local fuelValues = nil
+
+	---@cast fuelValues table
 	local function sortFuels(a, b) return fuelValues[a] > fuelValues[b] end
 	buildFuelTable = function()
 		-- Dump previous tables for garbage collection
@@ -215,6 +219,8 @@ do
 	-- ZZZ We dont really use the ammo categories at all, it could be a flat
 	-- sorted list of ammo items.
 	local ammoOrder = nil
+
+	---@cast ammoOrder table
 	local function sortByOrder(a, b) return ammoOrder[a] > ammoOrder[b] end
 	buildAmmoData = function()
 		ammoCategories = {}
