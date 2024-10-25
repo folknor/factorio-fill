@@ -132,13 +132,15 @@ do
 		__index = function(self, item)
 			local ret = nil
 			if type(item) ~= "string" then return 20 end
-			local p = game.item_prototypes[item]
-			if type(p) == "table" then
+			local p = prototypes.item[item]
+			if type(p) == "userdata" then
 				local max = type(p.stack_size) ~= "nil" and tonumber(p.stack_size) or 50
 				if max > 1 then
 					local percent
-					if p.fuel_category then percent = playerSettings[self.player_index].fuel
-					else percent = playerSettings[self.player_index].ammo
+					if p.fuel_category then
+						percent = playerSettings[self.player_index].fuel
+					else
+						percent = playerSettings[self.player_index].ammo
 					end
 					-- This can sometimes happen because the mod-settings system is not entirely stable yet.
 					-- It seems to index stored mod settings instead of mapping them, so a previously
@@ -193,12 +195,12 @@ do
 		sortedFuels = {}
 		fuelValues = {}
 
-		for name, item in pairs(game.item_prototypes) do
+		for name, item in pairs(prototypes.item) do
 			if item.fuel_value and item.fuel_value > 0 then
 				-- Dang these values are crazy, up in the trillions
 				local realScore = (item.stack_size * item.fuel_value) / 10000000
 				fuelValues[name] = realScore
-				sortedFuels[#sortedFuels+1] = name
+				sortedFuels[#sortedFuels + 1] = name
 			end
 		end
 		table.sort(sortedFuels, sortFuels)
@@ -217,12 +219,12 @@ do
 	buildAmmoData = function()
 		ammoCategories = {}
 		ammoOrder = {}
-		for name, item in pairs(game.item_prototypes) do
+		for name, item in pairs(prototypes.item) do
 			local ammoType = item.get_ammo_type()
-			if ammoType and ammoType.category then
-				local c = ammoType.category
+			if ammoType and ammoType.target_type then
+				local c = ammoType.target_type
 				if not ammoCategories[c] then ammoCategories[c] = {} end
-				ammoCategories[c][#ammoCategories[c]+1] = name
+				ammoCategories[c][#ammoCategories[c] + 1] = name
 				ammoOrder[name] = item.order
 			end
 		end
@@ -247,9 +249,11 @@ local function insertCarAmmo(entity, player, invAmmo)
 		slotCategories[entity.name] = {}
 		for i = 1, #invAmmo do
 			for category, validitems in pairs(ammoCategories) do
-				if invAmmo.can_set_filter(i, validitems[1]) then
-					slotCategories[entity.name][i] = category
-					break
+				for _, ammo in pairs(validitems) do
+					if invAmmo.can_set_filter(i, ammo) then
+						slotCategories[entity.name][i] = category
+						break
+					end
 				end
 			end
 		end
@@ -278,9 +282,9 @@ local function insertCarAmmo(entity, player, invAmmo)
 
 		for i, ammoItemName in next, ammoCategories[category] do
 			if CONFIG_UNIQUE_TYPES[category] and
-			   lastInsertedCategory and
-			   lastInsertedItem and
-			   lastInsertedItem == ammoItemName then
+				lastInsertedCategory and
+				lastInsertedItem and
+				lastInsertedItem == ammoItemName then
 				-- We already inserted this item type in the previous slot of the same category
 				-- So just skip this iteration and jump to next item type
 				skip = true
@@ -293,7 +297,7 @@ local function insertCarAmmo(entity, player, invAmmo)
 			end
 			if not skip then
 				if not fromInv then
-					fromInv = player.get_inventory(defines.inventory.player_main)
+					fromInv = player.get_inventory(defines.inventory.character_main)
 					if not fromInv or not fromInv.valid or fromInv.is_empty() then return end
 				end
 				local count = fromInv.get_item_count(ammoItemName)
@@ -312,7 +316,7 @@ local function insertCarAmmo(entity, player, invAmmo)
 					end
 					-- Get to next slot
 					break
-				-- We dont have enough, insert math.ceil(count/4) - minimum 1
+					-- We dont have enough, insert math.ceil(count/4) - minimum 1
 				elseif count > 0 then
 					if filter then invAmmo.set_filter(slot, ammoItemName) end
 					itemStackCache[ammoItemName] = math.ceil(count / 4)
@@ -344,9 +348,11 @@ local function insertTurretAmmo(entity, player, invAmmo)
 		slotCategories[entity.name] = {}
 		local i = 1
 		for category, validitems in pairs(ammoCategories) do
-			if invAmmo.can_insert(validitems[1]) then
-				slotCategories[entity.name][i] = category
-				i = i + 1
+			for _, ammo in pairs(validitems) do
+				if invAmmo.can_insert(ammo) then
+					slotCategories[entity.name][i] = category
+					i = i + 1
+				end
 			end
 		end
 	end
@@ -363,9 +369,9 @@ local function insertTurretAmmo(entity, player, invAmmo)
 		local filter = false
 		for i, ammoItemName in next, ammoCategories[category] do
 			if CONFIG_UNIQUE_TYPES[category] and
-			   lastInsertedCategory and
-			   lastInsertedItem and
-			   lastInsertedItem == ammoItemName then
+				lastInsertedCategory and
+				lastInsertedItem and
+				lastInsertedItem == ammoItemName then
 				skip = true
 				if (#ammoCategories[category]) == i then
 					skip = false
@@ -374,7 +380,7 @@ local function insertTurretAmmo(entity, player, invAmmo)
 			end
 			if not skip then
 				if not fromInv then
-					fromInv = player.get_inventory(defines.inventory.player_main)
+					fromInv = player.get_inventory(defines.inventory.character_main)
 					if not fromInv or not fromInv.valid or fromInv.is_empty() then return end
 				end
 				local count = fromInv.get_item_count(ammoItemName)
@@ -390,7 +396,7 @@ local function insertTurretAmmo(entity, player, invAmmo)
 					-- I presume this is exceptionally rare. In fact, I do presume that it will never happen.
 					-- But obviously only a fool would presume that.
 					-- The point is, we dont cache the stack_sizes, just look it up here.
-					local size = game.item_prototypes[ammoItemName].stack_size
+					local size = prototypes.item[ammoItemName].stack_size
 					if size and size > 1 then
 						if (count - toInsert) < (size + 1) then break end -- Just escape out if we dont have enough
 						toInsert = size
@@ -409,8 +415,8 @@ local function insertTurretAmmo(entity, player, invAmmo)
 					end
 					-- Get to next slot
 					break
-				-- We dont have enough, insert math.ceil(count/4) - minimum 1
-				-- unless this is the N-th slot with the same type, then just stop.
+					-- We dont have enough, insert math.ceil(count/4) - minimum 1
+					-- unless this is the N-th slot with the same type, then just stop.
 				elseif count > 0 and not filter then
 					itemStackCache[ammoItemName] = math.ceil(count / 4)
 					local inserted = invAmmo.insert(itemStackCache[ammoItemName])
@@ -447,7 +453,7 @@ do
 		end
 	end
 	insertFuel = function(entity, player, invFuel)
-		local fromInv = player.get_inventory(defines.inventory.player_main)
+		local fromInv = player.get_inventory(defines.inventory.character_main)
 		if not fromInv or not fromInv.valid or fromInv.is_empty() then return end
 
 		if not sortedFuels then buildFuelTable() end
@@ -512,7 +518,7 @@ do
 	-- created_entity: LuaEntity
 	-- player_index: int
 	local function onBuildEntity(e)
-		local entity = e.created_entity
+		local entity = e.entity
 		if not entity or not entity.valid or (not CONFIG_ENABLE[entity.type] and not CONFIG_ENABLE[entity.name]) then return end
 
 		-- Just in case someone inserts an unknown type into CONFIG_ENABLE
@@ -521,6 +527,8 @@ do
 		elseif nameHandlers[entity.name] then
 			nameHandlers[entity.name](entity, game.players[e.player_index])
 		end
+
+		print(entity.type)
 	end
 
 	script.on_event(defines.events.on_built_entity, onBuildEntity)

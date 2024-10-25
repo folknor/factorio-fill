@@ -1,11 +1,12 @@
 {
 	"name": "folk-fill",
-	"version": "0.2.2",
-	"factorio_version": "0.16",
+	"version": "0.2.3",
+	"factorio_version": "2.0",
 	"title": "Automated Fuel & Ammo",
 	"author": "folk",
 	"contact": "",
 	"homepage": "https://forums.factorio.com/viewtopic.php?f=94&t=45554",
 	"description": "Most likely automatically fills in things properly, probably. Preferrably both fuel and ammunition, if possible.",
-	"license": "CC-BY-NC 4.0"
+	"license": "CC-BY-NC 4.0",
+	"dependencies": ["base >= 2.0"]
 }
