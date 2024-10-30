@@ -328,14 +328,18 @@ do
 
 		for _, fuel in next, sortedFuels do
 			local count = fromInv.get_item_count(fuel)
-			local should = getStackSize(player, fuel)
+			if count > 0 then
+				local should = getStackSize(player, fuel)
 
-			if count >= should then
-				itemStackCache[fuel] = should
-				if insert(fuel, invFuel, fromInv) then break end
-			elseif count > 0 then
-				itemStackCache[fuel] = count
-				if insert(fuel, invFuel, fromInv) then break end
+				-- If we have exactly or less than the configured amount left in the inventory, then dont use it all
+				if count <= should then
+					should = math.ceil(count / 2)
+				end
+
+				if should > 0 then
+					itemStackCache[fuel] = should
+					if insert(fuel, invFuel, fromInv) then break end
+				end
 			end
 		end
 	end
