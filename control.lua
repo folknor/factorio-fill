@@ -19,23 +19,6 @@ local CONFIG_ENABLE = {
 	boiler = true,
 }
 
--- ZZZ we could figure CONFIG_UNIQUE_TYPES out by inspecting data.projectile.final_action and such.
--- But I can't be arsed.
--- If an ammo_category is set to true in this table, it means that:
---  - If the entity has more than one slot that accepts this category,
---    we will attempt to insert a unique item from this category in every slot.
--- THEORETICAL SCENARIO
--- So if a tank has 3x rocket slots:
---  - There's 6 types of rockets
---  - We sort the rockets by order
---  - When we place this tank type on a surface, we look in the players
---    inventory for 1 stack of the top 3 sorted rocket types.
---  - If we dont find that, we will in with whatever we find.
-local CONFIG_UNIQUE_TYPES = {
-	rocket = true,
-	["cannon-shell"] = true,
-}
-
 -------------------------------------------------------------------------------
 -- DOCS
 --
@@ -241,205 +224,81 @@ do
 	end
 end
 
+local function anyValidForSlot(inv, slot, items)
+	if inv.supports_filters() then
+		for _, item in next, items do
+			if inv.can_set_filter(slot, item) then
+				return true
+			end
+		end
+	else
+		for _, item in next, items do
+			if inv.get_insertable_count(item) > 0 then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+local function buildSlotCategories(inv)
+	local ret = {}
+	for i = 1, #inv do
+		for category, items in pairs(ammoCategories) do
+			if anyValidForSlot(inv, i, items) then
+				table.insert(ret, { slot = i, cat = category })
+				break
+			end
+		end
+	end
+	return ret
+end
+
 -------------------------------------------------------------------------------
 -- AMMUNITION INSERTERTS FOR CARS/TURRETS
 --
 
--- Car ammo slots support filters
-local function insertCarAmmo(entity, player, invAmmo)
-	if not ammoCategories then buildAmmoData() end
-
-	-- Find out which ammo types belong in each slot
-	-- This block is only run once per entity entry
-	if not slotCategories[entity.name] then
-		slotCategories[entity.name] = {}
-		for i = 1, #invAmmo do
-			for category, validitems in pairs(ammoCategories) do
-				for _, ammo in pairs(validitems) do
-					if invAmmo.can_set_filter(i, ammo) then
-						slotCategories[entity.name][i] = category
-						break
-					end
-				end
-			end
-		end
-	end
-
-	-- player inventory reference, set when we need it
-	-- because I dont know how expensive get_inventory is
-	local fromInv = nil
-
-	local lastInsertedItem = nil
-	local lastInsertedCategory = nil
-	for slot, category in next, slotCategories[entity.name] do
-		if lastInsertedCategory and category ~= lastInsertedCategory then
-			lastInsertedCategory = nil
-			lastInsertedItem = nil
-		end
-
-		-- The reason we use these two variables is a bit complicated
-		-- 1. We dont want to insert full stacks into the placed item, because it is a waste of resources
-		-- 2. If there is more than 1 weapon slot of the same type (Tankwerkz Goliath), the only
-		--    way I can find to do this without inserting a full stack into the first slot is to
-		--    first insert the configured amount into slot 1, then set an item filter on slot 2
-		--    and the game will prioritize slot 2 for the next inventory.insert call.
-		local skip = false
-		local filter = false
-
-		for i, ammoItemName in next, ammoCategories[category] do
-			if CONFIG_UNIQUE_TYPES[category] and
-				lastInsertedCategory and
-				lastInsertedItem and
-				lastInsertedItem == ammoItemName then
-				-- We already inserted this item type in the previous slot of the same category
-				-- So just skip this iteration and jump to next item type
-				skip = true
-				-- UNLESS the ammo item is the last entry in ammoCategories[category], because that means
-				-- it's the most primitive type, and there is no "next kind of ammo".
-				if (#ammoCategories[category]) == i then
-					skip = false
-					filter = true
-				end
-			end
-			if not skip then
-				if not fromInv then
-					fromInv = player.get_inventory(defines.inventory.character_main)
-					if not fromInv or not fromInv.valid or fromInv.is_empty() then return end
-				end
-				local count = fromInv.get_item_count(ammoItemName)
-				local toInsert = getStackSize(player, ammoItemName)
-
-				-- Do we have enough items on us to insert stack/4 ?
-				if count >= toInsert then
-					itemStackCache[ammoItemName] = toInsert
-					if filter then invAmmo.set_filter(slot, ammoItemName) end
-					local inserted = invAmmo.insert(itemStackCache[ammoItemName])
-					if inserted and inserted > 0 then
-						lastInsertedItem = ammoItemName
-						lastInsertedCategory = category
-						itemStackCache[ammoItemName] = inserted
-						fromInv.remove(itemStackCache[ammoItemName])
-					end
-					-- Get to next slot
-					break
-					-- We dont have enough, insert math.ceil(count/4) - minimum 1
-				elseif count > 0 then
-					if filter then invAmmo.set_filter(slot, ammoItemName) end
-					itemStackCache[ammoItemName] = math.ceil(count / 4)
-					local inserted = invAmmo.insert(itemStackCache[ammoItemName])
-					if inserted and inserted > 0 then
-						lastInsertedItem = ammoItemName
-						lastInsertedCategory = category
-						itemStackCache[ammoItemName] = inserted
-						fromInv.remove(itemStackCache[ammoItemName])
-					end
-					-- Get to next slot
-					break
-				end
-			end
-			skip = false
-			filter = false
-		end
-	end
-end
-
 -- Turret ammo slots do not support filters
 -- So we basically just have to try everything and see what works
-local function insertTurretAmmo(entity, player, invAmmo)
+local function insertAmmo(entity, player, inv)
 	if not ammoCategories then buildAmmoData() end
 
 	-- Find out which ammo types belong in each slot
 	-- This block is only run once per entity entry
-	if not slotCategories[entity.name] then
-		slotCategories[entity.name] = {}
-		local i = 1
-		for category, validitems in pairs(ammoCategories) do
-			for _, ammo in pairs(validitems) do
-				if invAmmo.can_insert(ammo) then
-					slotCategories[entity.name][i] = category
-					i = i + 1
-				end
-			end
-		end
+	if not slotCategories[entity] then
+		slotCategories[entity] = buildSlotCategories(inv)
 	end
 
-	local fromInv = nil
-	local lastInsertedItem = nil
-	local lastInsertedCategory = nil
-	for _, category in next, slotCategories[entity.name] do
-		if lastInsertedCategory and category ~= lastInsertedCategory then
-			lastInsertedCategory = nil
-			lastInsertedItem = nil
-		end
-		local skip = false
-		local filter = false
-		for i, ammoItemName in next, ammoCategories[category] do
-			if CONFIG_UNIQUE_TYPES[category] and
-				lastInsertedCategory and
-				lastInsertedItem and
-				lastInsertedItem == ammoItemName then
-				skip = true
-				if (#ammoCategories[category]) == i then
-					skip = false
-					filter = true
-				end
-			end
-			if not skip then
-				if not fromInv then
-					fromInv = player.get_inventory(defines.inventory.character_main)
-					if not fromInv or not fromInv.valid or fromInv.is_empty() then return end
-				end
-				local count = fromInv.get_item_count(ammoItemName)
-				local toInsert = getStackSize(player, ammoItemName)
+	local fromInv = player.get_inventory(defines.inventory.character_main)
+	if not fromInv or not fromInv.valid or fromInv.is_empty() then return end
 
-				-- XXX THIS IS NOT TESTED BECAUSE I DONT HAVE A TURRET WITH MORE THAN ONE AMMO SLOT
-				-- If |filter| is set here, it means that this slot is the N-th
-				-- slot in a row with the same ammo category.
-				-- Since turret ammo slots can not be filtered, it means we need
-				-- to increase the amount to the stack size so that it "overflows"
-				-- into the next slot.
-				if filter then
-					-- I presume this is exceptionally rare. In fact, I do presume that it will never happen.
-					-- But obviously only a fool would presume that.
-					-- The point is, we dont cache the stack_sizes, just look it up here.
-					local size = prototypes.item[ammoItemName].stack_size
-					if size and size > 1 then
-						if (count - toInsert) < (size + 1) then break end -- Just escape out if we dont have enough
-						toInsert = size
-					end
-				end
+	local forbidden = {}
 
-				-- Do we have enough items on us to insert?
-				if count >= toInsert then
-					itemStackCache[ammoItemName] = toInsert
-					local inserted = invAmmo.insert(itemStackCache[ammoItemName])
+	for _, data in next, slotCategories[entity] do
+		for _, ammo in next, ammoCategories[data.cat] do
+			if not forbidden[ammo] then
+				local count = fromInv.get_item_count(ammo)
+
+				-- Never try to insert the same ammo twice in the same entity.
+				forbidden[ammo] = true
+
+				if count > 0 then
+					local toInsert = getStackSize(player, ammo)
+
+					-- Do we have enough items on us to insert?
+					if count < toInsert then toInsert = math.ceil(count / 4) end
+
+					itemStackCache[ammo] = toInsert
+					local inserted = inv.insert(itemStackCache[ammo])
 					if inserted and inserted > 0 then
-						lastInsertedItem = ammoItemName
-						lastInsertedCategory = category
-						itemStackCache[ammoItemName] = inserted
-						fromInv.remove(itemStackCache[ammoItemName])
+						itemStackCache[ammo] = inserted
+						fromInv.remove(itemStackCache[ammo])
 					end
+
 					-- Get to next slot
-					break
-					-- We dont have enough, insert math.ceil(count/4) - minimum 1
-					-- unless this is the N-th slot with the same type, then just stop.
-				elseif count > 0 and not filter then
-					itemStackCache[ammoItemName] = math.ceil(count / 4)
-					local inserted = invAmmo.insert(itemStackCache[ammoItemName])
-					if inserted and inserted > 0 then
-						lastInsertedItem = ammoItemName
-						lastInsertedCategory = category
-						itemStackCache[ammoItemName] = inserted
-						fromInv.remove(itemStackCache[ammoItemName])
-					end
-					-- Get to next slot
-					break
-				elseif filter then
 					break
 				end
 			end
-			skip = false
-			filter = false
 		end
 	end
 end
@@ -498,14 +357,14 @@ do
 	typeHandlers["ammo-turret"] = function(entity, player)
 		local invAmmo = entity.get_inventory(defines.inventory.turret_ammo)
 		if invAmmo and invAmmo.valid and invAmmo.is_empty() then
-			insertTurretAmmo(entity, player, invAmmo)
+			insertAmmo(entity.name, player, invAmmo)
 		end
 	end
 
 	typeHandlers.car = function(entity, player)
 		local invAmmo = entity.get_inventory(defines.inventory.car_ammo)
 		if invAmmo and invAmmo.valid and invAmmo.is_empty() then
-			insertCarAmmo(entity, player, invAmmo)
+			insertAmmo(entity.name, player, invAmmo)
 		end
 
 		local invFuel = entity.get_inventory(defines.inventory.fuel)
@@ -521,8 +380,6 @@ do
 	nameHandlers["burner-mining-drill"] = insertFuel
 	nameHandlers.boiler = insertFuel
 
-	-- created_entity: LuaEntity
-	-- player_index: int
 	local function onBuildEntity(e)
 		local entity = e.entity
 		if not entity or not entity.valid or (not CONFIG_ENABLE[entity.type] and not CONFIG_ENABLE[entity.name]) then return end
@@ -536,9 +393,6 @@ do
 	end
 
 	script.on_event(defines.events.on_built_entity, onBuildEntity)
-
-	-- It is too imba. No longer works with the above function either.
-	--script.on_event(defines.events.on_robot_built_entity, onBuildEntity)
 end
 
 

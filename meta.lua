@@ -1,5 +1,8 @@
 ---@meta
 
+---@class storage
+storage = {}
+
 ---@class data
 ---@field extend function
 ---@field raw table
