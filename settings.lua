@@ -1,4 +1,3 @@
-
 _G.data:extend({
 	{
 		type = "int-setting",
@@ -16,5 +15,32 @@ _G.data:extend({
 		maximum_value = 100,
 		minimum_value = 5,
 	},
+	{
+		type = "string-setting",
+		name = "folk-fill-ammo-ignore",
+		setting_type = "runtime-per-user",
+		default_value = "capture-robot-rocket, atomic-bomb",
+		allow_blank = true,
+	},
+	{
+		type = "string-setting",
+		name = "folk-fill-ammo-prefer",
+		setting_type = "runtime-per-user",
+		default_value = "",
+		allow_blank = true,
+	},
+	{
+		type = "string-setting",
+		name = "folk-fill-fuel-ignore",
+		setting_type = "runtime-per-user",
+		default_value = "",
+		allow_blank = true,
+	},
+	{
+		type = "string-setting",
+		name = "folk-fill-fuel-prefer",
+		setting_type = "runtime-per-user",
+		default_value = "",
+		allow_blank = true,
+	},
 })
-

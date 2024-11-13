@@ -22,6 +22,9 @@ game = {}
 ---@field target_type TargetType
 
 ---@class itemPrototype
+---@field name? string
+---@field type? string
+---@field ammo_category table
 ---@field stack_size? number
 ---@field fuel_category? string
 ---@field fuel_value? number
@@ -30,11 +33,19 @@ game = {}
 
 itemPrototype = {}
 
+---@class entityPrototype
+---@field type? string
+---@field indexed_guns? itemPrototype[]
+---@field attack_parameters? table
+
+entityPrototype = {}
+
 ---@return AmmoType
 function itemPrototype.get_ammo_type() end
 
 ---@class prototypes
 ---@field item table<string, itemPrototype>
+---@field entity table<string, entityPrototype>
 
 ---@class script
 script = {}
