@@ -219,7 +219,6 @@ do
 			if type(item) ~= "string" then return 20 end
 			local p = prototypes.item[item]
 			if type(p) == "userdata" then
-				---@cast p itemPrototype
 				local max = type(p.stack_size) ~= "nil" and tonumber(p.stack_size) or 50
 				if max > 1 then
 					local percent
@@ -298,6 +297,7 @@ do
 		if not sortedFuels then buildFuelTable() end
 
 		local ignoredFuel = parseSet(p, iniIgnoreFuel)
+		---@cast sortedFuels table
 		sortedFuelsPerPlayer[p] = { table.unpack(sortedFuels), }
 		for i = #sortedFuelsPerPlayer[p], 1, -1 do
 			if ignoredFuel[sortedFuelsPerPlayer[p][i]] then
@@ -373,6 +373,7 @@ local function insertAmmo(entName, player, inv)
 		for _, category in next, weapon do -- There is only ever really one category in each weapon in vanilla at least
 			for _, ammo in next, cats[category] do
 				if not forbidden[ammo] then
+					-- XXX how should we handle quality? every get_item_count
 					local count = fromInv.get_item_count(ammo)
 
 					-- Never try to insert the same ammo twice in the same entity.
@@ -424,6 +425,7 @@ do
 
 		local fuels = getSortedFuels(player)
 		for _, fuel in next, fuels do
+			-- XXX how should we handle quality? every get_item_count
 			local count = fromInv.get_item_count(fuel)
 			if count > 0 then
 				local should = getStackSize(player, fuel)

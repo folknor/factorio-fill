@@ -1,0 +1,63 @@
+---------------------------------------------------------------------------------------------------
+Version: 0.3.2
+Date: 2024-11-29
+  Changes:
+    - Added changelog.txt
+    - Updated readme.
+
+---------------------------------------------------------------------------------------------------
+Version: 0.3.1
+Date: 2024-11-13
+  Changes:
+    - Rewrite large sections of the code.
+    - Artillery Wagons, Artillery Turrets, and Spidertrons are now supported.
+    - Rocket Turrets work properly. Rail Turrets also, but they might have worked
+      previously as well, I never tested them :-P
+    - Added 4 settings for ignored/preferred fuel and ammo items.
+      Use the items prototype names, comma-separated if necessary. The mod now by default
+      ignores capture-robot-rocket and atomic-bomb.
+    - Now only tries to use fuel sources that can actually chemically burn
+
+---------------------------------------------------------------------------------------------------
+Version: 0.2.5
+Date: 2024-10-30
+  Changes:
+    - 2.0 fixes and updates.
+    - If you have less than the configured stack % of fuel in your inventory, the mod inserts
+      half of what you have now to help prevent running out of for example wood.
+
+---------------------------------------------------------------------------------------------------
+Version: 0.2.2
+Date: 2018-01-20
+  Changes:
+    - Fix startup errors in factorio 0.16.
+
+---------------------------------------------------------------------------------------------------
+Version: 0.2.1
+Date: 2017-08-12
+  Changes:
+    - Just some tidying up, nothing visible.
+
+---------------------------------------------------------------------------------------------------
+Version: 0.2.0
+Date: ??
+  Changes:
+    - Added ingame settings for percent-stack sizes.
+
+---------------------------------------------------------------------------------------------------
+Version: 0.1.2
+Date: ??
+  Changes:
+    - Update for 0.15.
+
+---------------------------------------------------------------------------------------------------
+Version: 0.1.1
+Date: ??
+  Changes:
+    - Fixed fuel insert/remove to not give you free stacks. Oops! Thanks Ratzap for reporting.
+
+---------------------------------------------------------------------------------------------------
+Version: 0.1.0
+Date: ??
+  Changes:
+    - Initial release
