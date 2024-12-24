@@ -5,6 +5,7 @@
 -- Can be either entity name or type.
 -- Simply adding new entities to the list does not make them work.
 -- But adding new entities through other mods to the categories enabled below should work.
+---@type {[string]: boolean}
 local CONFIG_ENABLE = {
 	-- Types
 	["ammo-turret"] = true, -- rail-turret is also an ammo-turret
@@ -23,6 +24,7 @@ local CONFIG_ENABLE = {
 }
 
 -- These entity types or names are ignored whether specified in CONFIG_ENABLE or not.
+---@type {[string]: boolean}
 local CONFIG_DISABLE = {
 	["fluid-turret"] = true,
 	["electric-turret"] = true,
@@ -335,6 +337,7 @@ do
 	end
 
 	script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
+		---@cast event OnRuntimeModSettingChanged
 		local s = event.setting
 		if not s or not map[s] then return end
 
@@ -368,6 +371,9 @@ local function insertAmmo(entName, player, inv)
 
 	local forbidden = {}
 	local cats = getAmmoCategories(player)
+
+	-- weapons table is populated by getAmmoCategories, so we check after local cats
+	if not weapons[entName] then return end
 
 	for _, weapon in pairs(weapons[entName]) do
 		for _, category in next, weapon do -- There is only ever really one category in each weapon in vanilla at least
@@ -415,6 +421,10 @@ do
 			return true
 		end
 	end
+
+	---@param entity LuaEntity
+	---@param player LuaPlayer
+	---@param invFuel LuaInventory
 	insertFuel = function(entity, player, invFuel)
 		local fromInv = player.get_inventory(defines.inventory.character_main)
 		if not fromInv or not fromInv.valid or fromInv.is_empty() then return end
@@ -457,6 +467,8 @@ do
 	-- ZZZ Obviously this does not scale to modded items
 	local nameHandlers = {}
 
+	---@param entity LuaEntity
+	---@param player LuaPlayer
 	typeHandlers["ammo-turret"] = function(entity, player)
 		local invAmmo = entity.get_inventory(defines.inventory.turret_ammo)
 		if invAmmo and invAmmo.valid and invAmmo.is_empty() then
@@ -464,6 +476,8 @@ do
 		end
 	end
 
+	---@param entity LuaEntity
+	---@param player LuaPlayer
 	typeHandlers["artillery-turret"] = function(entity, player)
 		local invAmmo = entity.get_inventory(defines.inventory.artillery_turret_ammo)
 		if invAmmo and invAmmo.valid and invAmmo.is_empty() then
@@ -471,6 +485,8 @@ do
 		end
 	end
 
+	---@param entity LuaEntity
+	---@param player LuaPlayer
 	typeHandlers["artillery-wagon"] = function(entity, player)
 		local invAmmo = entity.get_inventory(defines.inventory.artillery_wagon_ammo)
 		if invAmmo and invAmmo.valid and invAmmo.is_empty() then
@@ -478,6 +494,8 @@ do
 		end
 	end
 
+	---@param entity LuaEntity
+	---@param player LuaPlayer
 	typeHandlers["spider-vehicle"] = function(entity, player)
 		local invAmmo = entity.get_inventory(defines.inventory.spider_ammo)
 		if invAmmo and invAmmo.valid and invAmmo.is_empty() then
@@ -485,6 +503,8 @@ do
 		end
 	end
 
+	---@param entity LuaEntity
+	---@param player LuaPlayer
 	typeHandlers.car = function(entity, player)
 		local invAmmo = entity.get_inventory(defines.inventory.car_ammo)
 		if invAmmo and invAmmo.valid and invAmmo.is_empty() then
@@ -505,6 +525,7 @@ do
 	nameHandlers.boiler = insertFuel
 
 	local function onBuildEntity(e)
+		---@cast e OnBuiltEntity
 		local entity = e.entity
 		if not entity or not entity.valid or (not CONFIG_ENABLE[entity.type] and not CONFIG_ENABLE[entity.name]) then return end
 
